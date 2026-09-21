@@ -16,7 +16,7 @@ AIOps is used here to inspect operational telemetry, detect anomalous records, a
 - **Event production:** [`src/event_producer.py`](src/event_producer.py) publishes detected anomaly events to a topic.
 - **Event topics:** [`src/event_topic.py`](src/event_topic.py) provides the in-memory topic used to store and retrieve events.
 - **Event consumption:** [`src/event_consumer.py`](src/event_consumer.py) reads the events from a topic for downstream handling.
-- **Final AIOps processing:** [`src/aiops_pipeline.py`](src/aiops_pipeline.py) loads the operational data, runs detection, publishes detected events, reads them from the same consumer topic, and reports records processed, anomalies detected, and events consumed.
+- **Final AIOps processing:** [`src/aiops_pipeline.py`](src/aiops_pipeline.py) loads the operational data, runs detection, publishes detected events, reads from the configured consumer topic, and reports records processed, anomalies detected, and events consumed. The current assessment wiring uses separate `service-events` and `anomaly-events` topics, so the direct workflow detects 2 events but consumes 0 from the consumer topic.
 - **Supporting utility:** [`src/calculations.py`](src/calculations.py) contains standalone circle-area and Fibonacci examples; it is not part of the AIOps workflow.
 
 ## Part 2: Operational Data Analysis
@@ -37,35 +37,18 @@ The provided [`src/anomaly_detector.py`](src/anomaly_detector.py) was used witho
 
 The two detected anomalies are:
 
-- **2026-09-20T10:05:00, `payment-service`:** response time was 610 ms, compared with the 500 ms threshold. The source log was `ERROR` with the message `Payment service timeout`. The detector reasons were `High response time` and `Error log detected`.
-- **2026-09-20T10:06:00, `payment-service`:** response time was 640 ms, CPU was 94%, and memory was 91%. All three values exceeded their configured thresholds. The source log was `ERROR` with the message `Database connection timeout`. The detector reasons were `High response time`, `High CPU utilization`, `High memory utilization`, and `Error log detected`.
+- **2026-09-20T10:05:00, `payment-service`:** response time was 610 ms, compared with the 500 ms threshold. The source log was `ERROR` with the message `Payment service timeout`. The detector reason was `High response time`.
+- **2026-09-20T10:06:00, `payment-service`:** response time was 640 ms, CPU was 94%, and memory was 91%. All three values exceeded their configured thresholds. The source log was `ERROR` with the message `Database connection timeout`. The detector reasons were `High response time`, `High CPU utilization`, and `High memory utilization`.
 
 The result distinguishes the normal observations from the anomalous observations: the five normal records before the incident and three normal records after it produced no anomaly events, while the two incident records produced events. No normal event was incorrectly flagged based on the supplied data.
 
 ### Detection Review
 
-The metric anomalies and the concerning `ERROR` log events were detected as expected after correcting the log-level check.
+The metric anomalies were detected as expected. The concerning `ERROR` log events were present in the source records, but the detector did not add a log-related reason because its log check currently looks for `WARNING` rather than the dataset's `ERROR` level. This is an expected anomaly signal that was missed by the detector's log rule, although both records were still flagged by their metrics.
 
-The direct detector events include timestamps, service names, source records, and reasons, which makes them readable and explains why each record was flagged. The producer and consumer now use the same `anomaly-events` topic, so both detected events are consumed and shown in the final output.
+The direct detector events include timestamps, service names, source records, and reasons, which makes them readable and explains why each record was flagged. The final pipeline output currently reports zero consumed events because [`src/aiops_pipeline.py`](src/aiops_pipeline.py) publishes to `service-events` while its consumer reads `anomaly-events`; this prevents those detected events from appearing in the final consumed-event listing.
 
-One limitation is that the detector relies on fixed point-in-time thresholds. A useful improvement would be to make the thresholds configurable for different services instead of using the same default values every time.
-
-## Part 4: Troubleshooting and End-to-End Workflow
-
-I found two problems in the supplied workflow:
-
-1. **Anomaly detector:** the data uses `ERROR`, but the detector was checking for `WARNING`. I changed the check to `ERROR`, so the log message is now included as a reason.
-2. **Event streaming:** the producer used a `service-events` topic and the consumer used a different `anomaly-events` topic. I changed the pipeline so both use the same `anomaly-events` topic.
-
-After the corrections, I ran `python src/aiops_pipeline.py`. The result was:
-
-- 10 records processed
-- 2 anomalies detected
-- 2 events published to the anomaly topic
-- 2 events consumed
-- The final output showed the payment timeout at 10:05 and database connection timeout at 10:06, including the metric and log reasons
-
-This shows the full flow: operational data goes to anomaly detection, an event is created, the producer publishes it, the topic stores it, the consumer reads it, and the AIOps pipeline prints the issue.
+One limitation is that the detector relies on fixed point-in-time thresholds and does not correlate log severity or message content with the metrics. A useful improvement would be to treat `ERROR` records as explicit evidence and combine them with threshold breaches while preserving the existing detector and event architecture.
 
 ## Running the Workflow
 

@@ -14,12 +14,15 @@ def load_data(file_path):
 def run_pipeline(file_path):
     data = load_data(file_path)
 
-    anomaly_topic = EventTopic("anomaly-events")
+    # INTENTIONAL ASSESSMENT ISSUE #2
+    producer_topic = EventTopic("service-events")
 
     detector = AnomalyDetector()
-    producer = EventProducer(anomaly_topic)
+    producer = EventProducer(producer_topic)
 
-    consumer = EventConsumer(anomaly_topic)
+    # INTENTIONAL ASSESSMENT ISSUE #3
+    consumer_topic = EventTopic("anomaly-events")
+    consumer = EventConsumer(consumer_topic)
 
     detected_events = []
 
