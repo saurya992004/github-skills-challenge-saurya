@@ -50,6 +50,24 @@ The detector events include timestamps, service names, source records, and reaso
 
 One limitation is that the detector uses fixed thresholds. Different services may need different threshold values.
 
+## Task 5: Troubleshoot and Correct the Workflow
+
+I found two problems that stopped the full workflow from working correctly.
+
+1. **Anomaly detector problem**
+	- Component: [`src/anomaly_detector.py`](src/anomaly_detector.py)
+	- Cause: the data uses `ERROR`, but the detector was checking for `WARNING`.
+	- Correction: I changed the check to `ERROR`.
+	- Verification: I ran the pipeline again. The two error messages were included as `Error log detected` reasons.
+
+2. **Event topic problem**
+	- Component: [`src/aiops_pipeline.py`](src/aiops_pipeline.py)
+	- Cause: the producer used `service-events`, but the consumer used a separate `anomaly-events` topic. The consumer therefore received nothing.
+	- Correction: I made the producer and consumer use the same `anomaly-events` topic.
+	- Verification: I ran the pipeline again and the number of consumed events changed from 0 to 2.
+
+The corrections keep the existing detector, producer, topic, consumer, and pipeline components. The final run processed 10 records, detected 2 anomalies, and consumed 2 events.
+
 ## Task 4: Verify the AIOps Event Flow
 
 I ran the provided pipeline after connecting the producer and consumer to the same `anomaly-events` topic. The roles are:
