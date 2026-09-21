@@ -29,6 +29,27 @@ The analysis below is based on the 10 records in [`data/service_data.json`](data
 4. **Normal behaviour:** Records from 10:00 through 10:04 and from 10:07 through 10:09 appear normal. They have `INFO` logs, successful-processing messages, response times between 120 and 150 ms, CPU between 42% and 50%, and memory between 51% and 57%.
 5. **Unusual behaviour:** The 10:05 record reports a 610 ms response time, an `ERROR` log, and a payment-service timeout. The 10:06 record reports a 640 ms response time, CPU at 94%, memory at 91%, an `ERROR` log, and a database connection timeout. These two consecutive records represent the incident window; the return to normal-looking values at 10:07 suggests recovery.
 
+## Part 3: Anomaly Detection and Event Streaming Analysis
+
+The provided [`src/anomaly_detector.py`](src/anomaly_detector.py) was used without replacing its threshold-based architecture. It processes all 10 records and flags a record when response time exceeds 500 ms, CPU exceeds 80%, or memory exceeds 80%.
+
+### Detection Report
+
+The two detected anomalies are:
+
+- **2026-09-20T10:05:00, `payment-service`:** response time was 610 ms, compared with the 500 ms threshold. The source log was `ERROR` with the message `Payment service timeout`. The detector reason was `High response time`.
+- **2026-09-20T10:06:00, `payment-service`:** response time was 640 ms, CPU was 94%, and memory was 91%. All three values exceeded their configured thresholds. The source log was `ERROR` with the message `Database connection timeout`. The detector reasons were `High response time`, `High CPU utilization`, and `High memory utilization`.
+
+The result distinguishes the normal observations from the anomalous observations: the five normal records before the incident and three normal records after it produced no anomaly events, while the two incident records produced events. No normal event was incorrectly flagged based on the supplied data.
+
+### Detection Review
+
+The metric anomalies were detected as expected. The concerning `ERROR` log events were present in the source records, but the detector did not add a log-related reason because its log check currently looks for `WARNING` rather than the dataset's `ERROR` level. This is an expected anomaly signal that was missed by the detector's log rule, although both records were still flagged by their metrics.
+
+The direct detector events include timestamps, service names, source records, and reasons, which makes them readable and explains why each record was flagged. The final pipeline output currently reports zero consumed events because [`src/aiops_pipeline.py`](src/aiops_pipeline.py) publishes to `service-events` while its consumer reads `anomaly-events`; this prevents those detected events from appearing in the final consumed-event listing.
+
+One limitation is that the detector relies on fixed point-in-time thresholds and does not correlate log severity or message content with the metrics. A useful improvement would be to treat `ERROR` records as explicit evidence and combine them with threshold breaches while preserving the existing detector and event architecture.
+
 ## Running the Workflow
 
 From the repository root:
