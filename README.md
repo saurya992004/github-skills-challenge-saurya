@@ -107,6 +107,25 @@ The output showed:
 
 This confirms the complete path: operational data -> anomaly detection -> event -> producer -> topic -> consumer -> AIOps result.
 
+## Task 8: Validation Result
+
+I ran the validation that is provided in the repository:
+
+```bash
+python -m pytest
+python src/aiops_pipeline.py
+```
+
+The checks passed. There were 8 passing tests. The full workflow also completed successfully:
+
+- 10 operational records were processed.
+- 2 anomalies were detected.
+- 2 anomaly events were generated and moved through the topic.
+- 2 events were consumed and processed.
+- The final output showed the payment timeout and database connection timeout.
+
+This confirms that the data processing, anomaly detection, event pipeline, consumer, and final AIOps result are working.
+
 ## How to Reproduce the Demonstration
 
 From the repository root, another user can do these steps:
