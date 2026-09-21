@@ -19,6 +19,16 @@ AIOps is used here to inspect operational telemetry, detect anomalous records, a
 - **Final AIOps processing:** [`src/aiops_pipeline.py`](src/aiops_pipeline.py) loads the operational data, runs detection, publishes detected events, reads from the configured consumer topic, and reports records processed, anomalies detected, and events consumed. The current assessment wiring uses separate `service-events` and `anomaly-events` topics, so the direct workflow detects 2 events but consumes 0 from the consumer topic.
 - **Supporting utility:** [`src/calculations.py`](src/calculations.py) contains standalone circle-area and Fibonacci examples; it is not part of the AIOps workflow.
 
+## Part 2: Operational Data Analysis
+
+The analysis below is based on the 10 records in [`data/service_data.json`](data/service_data.json).
+
+1. **Metrics:** `response_time_ms` measures request latency, `cpu_percent` measures CPU utilization, and `memory_percent` measures memory utilization. These numeric fields describe the service's operational performance and resource use.
+2. **Log information:** `log_level` identifies the severity or category of the record (`INFO` or `ERROR`), and `message` contains the related human-readable event description. `service` identifies the emitting service, while `timestamp` identifies when the record was produced.
+3. **Timestamp use:** Timestamps use ISO-like date-time values and progress in one-minute intervals from `2026-09-20T10:00:00` through `2026-09-20T10:09:00`. This ordering provides the timeline needed to see the short degradation and the subsequent recovery.
+4. **Normal behaviour:** Records from 10:00 through 10:04 and from 10:07 through 10:09 appear normal. They have `INFO` logs, successful-processing messages, response times between 120 and 150 ms, CPU between 42% and 50%, and memory between 51% and 57%.
+5. **Unusual behaviour:** The 10:05 record reports a 610 ms response time, an `ERROR` log, and a payment-service timeout. The 10:06 record reports a 640 ms response time, CPU at 94%, memory at 91%, an `ERROR` log, and a database connection timeout. These two consecutive records represent the incident window; the return to normal-looking values at 10:07 suggests recovery.
+
 ## Running the Workflow
 
 From the repository root:
