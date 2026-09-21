@@ -70,6 +70,26 @@ The execution result was:
 
 So the event flow was: operational data -> detector -> event -> producer -> topic -> consumer -> AIOps output.
 
+## Task 6: End-to-End Pipeline Result
+
+I executed the full pipeline with:
+
+```bash
+python src/aiops_pipeline.py
+```
+
+The output showed:
+
+- 10 records were processed from the operational data file.
+- 2 unusual records were detected.
+- An anomaly event was made for each unusual record.
+- The producer published the events to the `anomaly-events` topic.
+- The consumer received 2 events from the topic.
+- The AIOps pipeline processed the received events and printed their details.
+- The final output showed the payment service timeout and database connection timeout, with the reasons for each problem.
+
+This confirms the complete path: operational data -> anomaly detection -> event -> producer -> topic -> consumer -> AIOps result.
+
 ## Running the Workflow
 
 From the repository root:
